@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=yes">
+<meta name="theme-color" content="#FFF5F5">
+<title>El juego de palabras de Rosita Pastel</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFF5F5;
+  --surface:#FFFFFF;
+  --tile-border:#E8D5D5;
+  --tile-text:#5D4E4E;
+  --correct:#B5EAD7;
+  --present:#FFDAC1;
+  --absent:#D5C5C5;
+  --skipped:#E8D8F0;
+  --key-bg:#F5E6E6;
+  --key-text:#5D4E4E;
+  --key-special:#E8D5D5;
+  --header-color:#D4A0A0;
+  --msg-color:#5D4E4E;
+  --hint-color:#C4A0D4;
+  font-size:clamp(14px,4vw,18px)
+}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--tile-text);
+  min-height:100dvh;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  overflow-x:hidden
+}
+/* Screen system */
+.screen{
+  overflow-y:auto;
+  position:sticky;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg);
+  z-index:10;
+  opacity:0;
+  transition:opacity 0.4s ease;
+  pointer-events:none;
+  padding:1.5rem
+}
+.screen.active{
+  opacity:1;
+  pointer-events:all
+}
+/* Splash */
+.splash-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1.5rem;
+  max-width:380px;
+  text-align:center
+}
+.splash-img{
+  width:clamp(150px,45vw,220px);
+  border-radius:45%;
+  border:4px solid var(--header-color);
+  box-shadow:0 4px 20px rgba(212,160,160,0.25);
+  background:var(--surface);
+  object-fit:cover
+}
+.splash-content h1{
+  font-size:clamp(1.3rem,5vw,1.8rem);
+  color:var(--header-color);
+  font-weight:700;
+  line-height:1.3
+}
+.pastel-btn{
+  padding:0.75rem 2.5rem;
+  border:2px solid var(--header-color);
+  border-radius:2.5rem;
+  background:var(--surface);
+  color:var(--header-color);
+  font-size:1.05rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:all 0.2s;
+  touch-action:manipulation
+}
+.pastel-btn:active{
+  background:var(--header-color);
+  color:white
+}
+.pastel-btn:disabled{
+  opacity:0.5;
+  cursor:default
+}
+/* Instructions */
+.instructions-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1.2rem;
+  max-width:420px;
+  text-align:center
+}
+.instructions-content h2{
+  font-size:1.4rem;
+  color:var(--header-color)
+}
+.instructions-content p{
+  font-size:0.95rem;
+  line-height:1.6;
+  color:var(--tile-text);
+  text-align:left
+}
+.leyenda{
+  display:flex;
+  flex-direction:column;
+  gap:0.7rem;
+  text-align:left;
+  width:100%;
+  padding:0.5rem
+}
+.leyenda-item{
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  font-size:0.88rem;
+  line-height:1.4
+}
+.leyenda-cuadro{
+  width:2rem;
+  height:2rem;
+  border-radius:4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:0.9rem;
+  color:white;
+  flex-shrink:0
+}
+.leyenda-cuadro.correct{background:var(--correct)}
+.leyenda-cuadro.present{background:var(--present)}
+.leyenda-cuadro.absent{background:var(--absent)}
+.instrucciones-final{
+  font-size:1.1rem !important;
+  font-weight:700;
+  color:var(--header-color) !important;
+  text-align:center !important
+}
+/* Game screen */
+#game-screen{
+  background:var(--bg)
+}
+#game-screen::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:url('rositabop.png') center/cover no-repeat;
+  opacity:0.035;
+  pointer-events:none;
+  z-index:0
+}
+#game-screen .screen{
+  position:relative;
+  opacity:1;
+  pointer-events:all;
+  padding:0
+}
+#app{
+  width:100%;
+  max-width:450px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1rem;
+  position:relative;
+  z-index:1;
+  padding:1rem
+}
+header{
+  text-align:center;
+  top: 0;
+  z-index:10;
+  width:100%;
+  padding:0.5rem 0;
+  position:sticky
+}
+
+header h1{
+  font-size:1.3rem;
+  color:var(--header-color);
+  font-weight:700;
+  letter-spacing:2px;
+  padding-right:2.5rem;
+  position: sticky;
+}
+#ranking-btn{
+  position:absolute;
+  top:50%;
+  right:0;
+  transform:translateY(-50%);
+  background:none;
+  border:none;
+  font-size:1.4rem;
+  cursor:pointer;
+  padding:0.3rem;
+  touch-action:manipulation;
+  transition:transform 0.2s
+}
+#ranking-btn:active{transform:translateY(-50%) scale(1.15)}
+#difficulty{
+  display:flex;
+  gap:0.5rem;
+  justify-content:center;
+  margin-top:0.5rem
+}
+#difficulty button{
+  padding:0.35rem 0.9rem;
+  border:2px solid var(--tile-border);
+  border-radius:2rem;
+  background:var(--surface);
+  color:var(--tile-text);
+  font-size:0.75rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
+  touch-action:manipulation
+}
+#difficulty button.active{
+  background:var(--header-color);
+  color:white;
+  border-color:var(--header-color)
+}
+#board{
+  display:grid;
+  gap:0.35rem;
+  padding:0.25rem;
+  touch-action:manipulation
+}
+.tile{
+  width:clamp(42px,13vw,62px);
+  height:clamp(42px,13vw,62px);
+  border:2px solid var(--tile-border);
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:clamp(1.2rem,5vw,1.8rem);
+  font-weight:700;
+  text-transform:uppercase;
+  color:var(--tile-text);
+  background:var(--surface);
+  transform-style:preserve-3d;
+  perspective:400px;
+  transition:border-color 0.1s
+}
+.tile.filled{
+  border-color:#C4A8A8;
+  animation:pop 0.1s ease
+}
+@keyframes pop{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.12)}
+  100%{transform:scale(1)}
+}
+.tile.correct{background:var(--correct);border-color:var(--correct);color:white}
+.tile.present{background:var(--present);border-color:var(--present);color:white}
+.tile.absent{background:var(--absent);border-color:var(--absent);color:white}
+.tile.skipped{
+  background:var(--skipped);
+  border-color:#D0C0E0;
+  color:#C0B0D0;
+  font-size:clamp(1rem,4vw,1.4rem)
+}
+.tile.flip-correct{animation:flipCorrect 0.5s ease forwards}
+.tile.flip-present{animation:flipPresent 0.5s ease forwards}
+.tile.flip-absent{animation:flipAbsent 0.5s ease forwards}
+@keyframes flipCorrect{
+  0%{transform:rotateX(0deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  45%{transform:rotateX(90deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  55%{transform:rotateX(90deg);background:var(--correct);border-color:var(--correct);color:white}
+  100%{transform:rotateX(0deg);background:var(--correct);border-color:var(--correct);color:white}
+}
+@keyframes flipPresent{
+  0%{transform:rotateX(0deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  45%{transform:rotateX(90deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  55%{transform:rotateX(90deg);background:var(--present);border-color:var(--present);color:white}
+  100%{transform:rotateX(0deg);background:var(--present);border-color:var(--present);color:white}
+}
+@keyframes flipAbsent{
+  0%{transform:rotateX(0deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  45%{transform:rotateX(90deg);background:var(--surface);border-color:var(--tile-border);color:var(--tile-text)}
+  55%{transform:rotateX(90deg);background:var(--absent);border-color:var(--absent);color:white}
+  100%{transform:rotateX(0deg);background:var(--absent);border-color:var(--absent);color:white}
+}
+.tile.shake{animation:shake 0.4s ease}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+.tile.bounce{animation:bounce 0.4s ease}
+@keyframes bounce{
+  0%,100%{transform:translateY(0)}
+  30%{transform:translateY(-10px)}
+  60%{transform:translateY(-4px)}
+}
+#hint-btn{
+  padding:0.5rem 1.5rem;
+  border:2px solid var(--hint-color);
+  border-radius:2rem;
+  background:var(--surface);
+  color:var(--hint-color);
+  font-size:0.85rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:all 0.2s;
+  touch-action:manipulation
+}
+#hint-btn:active{background:var(--hint-color);color:white}
+#hint-btn:disabled{opacity:0.4;cursor:default}
+#keyboard{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:0.4rem;
+  touch-action:manipulation
+}
+.key-row{
+  display:flex;
+  gap:0.35rem;
+  justify-content:center
+}
+.key{
+  min-height:50px;
+  padding:0.5rem 0;
+  flex:1;
+  max-width:clamp(36px,10vw,48px);
+  border:none;
+  border-radius:6px;
+  background:var(--key-bg);
+  color:var(--key-text);
+  font-size:clamp(0.85rem,3.5vw,1.1rem);
+  font-weight:700;
+  text-transform:uppercase;
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:background 0.15s,color 0.15s;
+  -webkit-tap-highlight-color:transparent;
+  display:flex;
+  align-items:center;
+  justify-content:center
+}
+.key:active{background:var(--key-special)}
+.key.special{
+  flex:1.8;
+  font-size:clamp(0.65rem,2.8vw,0.85rem);
+  background:var(--key-special)
+}
+.key.correct{background:var(--correct);color:white}
+.key.present{background:var(--present);color:white}
+.key.absent{background:var(--absent);color:#f0e0e0}
+#message{
+  min-height:2rem;
+  font-size:0.9rem;
+  font-weight:600;
+  color:var(--msg-color);
+  text-align:center;
+  padding:0.25rem;
+  line-height:1.4
+}
+#reset-btn{
+  padding:0.6rem 2rem;
+  border:2px solid var(--header-color);
+  border-radius:2rem;
+  background:var(--surface);
+  color:var(--header-color);
+  font-size:0.9rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:all 0.2s
+}
+#reset-btn:active{background:var(--header-color);color:white}
+/* Ranking modal */
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.25);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.3s;
+  padding:1rem
+}
+.modal.active{
+  opacity:1;
+  pointer-events:all
+}
+.modal-content{
+  background:var(--surface);
+  border-radius:16px;
+  padding:1.5rem;
+  max-width:380px;
+  width:100%;
+  max-height:80vh;
+  overflow-y:auto;
+  box-shadow:0 8px 30px rgba(0,0,0,0.12);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1rem
+}
+.modal-content h2{
+  color:var(--header-color);
+  font-size:1.2rem
+}
+#ranking-list{
+  width:100%
+}
+.ranking-entry{
+  display:grid;
+  grid-template-columns:2rem 1fr auto auto;
+  gap:0.5rem;
+  align-items:center;
+  padding:0.5rem 0.4rem;
+  border-bottom:1px solid var(--tile-border);
+  font-size:0.85rem
+}
+.ranking-entry:last-child{border-bottom:none}
+.ranking-entry .r-pos{
+  font-weight:700;
+  color:var(--header-color);
+  text-align:center
+}
+.ranking-entry .r-date{color:var(--tile-text)}
+.ranking-entry .r-diff{
+  font-size:0.75rem;
+  background:var(--key-bg);
+  padding:0.15rem 0.5rem;
+  border-radius:1rem;
+  text-align:center
+}
+.ranking-entry .r-score{
+  font-weight:700;
+  color:var(--header-color);
+  text-align:right
+}
+#ranking-close{
+  padding:0.5rem 2rem;
+  font-size:0.9rem
+}
+@media(max-width:380px){
+  .key{min-height:44px;font-size:0.8rem}
+  #board{gap:0.25rem}
+  .splash-content h1{font-size:1.1rem}
+  .instructions-content p{font-size:0.85rem}
+  .leyenda-item{font-size:0.8rem}
+}
+/* Landscape: compress everything to fit shorter viewports */
+@media(orientation:landscape)and(max-height:500px){
+  #game-screen.screen{
+    justify-content:flex-start;
+    overflow-y:auto;
+    padding:0
+  }
+  #app{
+    padding:0.3rem;
+    gap:0.25rem;
+    min-height:max-content;
+    padding-bottom:3rem;
+    max-width:420px
+  }
+  header{padding:0.15rem 0}
+  header h1{font-size:0.9rem;padding-right:2rem}
+  #ranking-btn{font-size:1.1rem}
+  #difficulty{margin-top:0.15rem}
+  #difficulty button{padding:0.2rem 0.5rem;font-size:0.6rem}
+  .tile{width:clamp(30px,9vw,42px);height:clamp(30px,9vw,42px);font-size:clamp(0.85rem,3.5vw,1.1rem)}
+  #board{gap:0.2rem;padding:0.1rem}
+  .key{min-height:34px;padding:0.3rem 0;font-size:clamp(0.7rem,2.8vw,0.85rem)}
+  .key.special{font-size:clamp(0.55rem,2.2vw,0.7rem)}
+  #keyboard{gap:0.2rem}
+  .key-row{gap:0.2rem}
+  #hint-btn{padding:0.25rem 1rem;font-size:0.7rem}
+  #message{min-height:1.2rem;font-size:0.7rem;padding:0.1rem}
+  #reset-btn{padding:0.35rem 1.2rem;font-size:0.75rem}
+}
+</style>
+</head>
+<body>
+<div id="splash-screen" class="screen active">
+  <div class="splash-content">
+    <img src="rositabop.png" alt="Rosita" class="splash-img">
+    <h1>🌸 El juego de palabras<br>de Rosita Pastel</h1>
+    <button id="siguiente-btn" class="pastel-btn">Siguiente →</button>
+  </div>
+</div>
+
+<div id="instructions-screen" class="screen">
+  <div class="instructions-content">
+    <h2>📖 Instrucciones</h2>
+    <p>¡Bienvenida Rosita!, a tu juego de palabras. Descubre la palabra oculta de hoy en 6 intentos. Es muy fácil:</p>
+    <div class="leyenda">
+      <div class="leyenda-item">
+        <span class="leyenda-cuadro correct">A</span>
+        <span>Las casillas <strong>VERDES</strong> significan que la letra está en el lugar correcto.</span>
+      </div>
+      <div class="leyenda-item">
+        <span class="leyenda-cuadro present">A</span>
+        <span>Las casillas <strong>NARANJAS</strong> significan que la letra sí va en la palabra, pero en otra posición.</span>
+      </div>
+      <div class="leyenda-item">
+        <span class="leyenda-cuadro absent">A</span>
+        <span>Las casillas <strong>GRISES</strong> significan que esa letra no forma parte de la palabra.</span>
+      </div>
+    </div>
+    <p class="instrucciones-final">¡Diviértete!</p>
+    <button id="jugar-btn" class="pastel-btn">🎮 ¡A jugar!</button>
+  </div>
+</div>
+
+<div id="game-screen" class="screen">
+  <div id="app">
+    <header>
+      <h1>🌸 Rosita Pastel</h1>
+      <button id="ranking-btn">🏆</button>
+      <div id="difficulty">
+        <button data-diff="facil">Fácil</button>
+        <button data-diff="medio" class="active">Medio</button>
+        <button data-diff="dificil">Difícil</button>
+      </div>
+    </header>
+    <div id="board"></div>
+    <button id="hint-btn">💡 Una pista, Rosita?</button>
+    <div id="keyboard"></div>
+    <div id="message"></div>
+    <button id="reset-btn">🔄 Nueva Palabra</button>
+  </div>
+</div>
+
+<div id="ranking-modal" class="modal">
+  <div class="modal-content">
+    <h2>🏆 Ranking - Top 10</h2>
+    <div id="ranking-list"></div>
+    <button id="ranking-close" class="pastel-btn">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const THEMED_WORDS = [
+  { word:'maria', hint:'La más grande de tus hijas' },
+  { word:'sofia', hint:'Nombre de una de tus nietas' },
+  { word:'celia', hint:'Celia Cruz, la guarachera de Cuba' },
+  { word:'isela', hint:'La que no es maria haha' },
+  { word:'elisa', hint:'Nombre de personaje de novela' },
+  { word:'magda', hint:'Madre de familia en telenovela' },
+  { word:'paola', hint:'Nombre de actriz mexicana' },
+  { word:'laura', hint:'Nombre de actriz de los 90' },
+  { word:'norma', hint:'Personaje de telenovela' },
+  { word:'angel', hint:'Galán de telenovela' },
+  { word:'amado', hint:'Personaje de novela mexicana' },
+  { word:'galan', hint:'Protagonista masculino' },
+  { word:'roman', hint:'Personaje de telenovela' },
+  { word:'reina', hint:'Telenovela "Reina de Corazones"' },
+  { word:'actor', hint:'Trabajo de tus favoritos' },
+  { word:'bello', hint:'Sinónimo de guapo' },
+  { word:'lindo', hint:'Adorable, encantador' },
+  { word:'bella', hint:'Hermosa, como una actriz' },
+  { word:'mujer', hint:'"___ de dos patas", canción de Paquita' },
+  { word:'patas', hint:'"Rata de dos ___", canción' },
+  { word:'llora', hint:'"Rata de dos patas, ___ corazón"' },
+  { word:'besos', hint:'Tema de canciones románticas' },
+  { word:'fuego', hint:'Pasión en la música ranchera' },
+  { word:'canto', hint:'Lo que hace Paquita' },
+  { word:'baile', hint:'Bailar al son de la música' },
+  { word:'ritmo', hint:'El compás de la canción' },
+  { word:'danza', hint:'Baile elegante' },
+  { word:'huevo', hint:'Ingrediente de cocina' },
+  { word:'leche', hint:'Producto lácteo blanco' },
+  { word:'queso', hint:'Derivado de la leche' },
+  { word:'carne', hint:'Proteína en tus recetas' },
+  { word:'fruta', hint:'Dulce y natural' },
+  { word:'arroz', hint:'Acompañante de comidas' },
+  { word:'pollo', hint:'Ave de corral en tus guisos' },
+  { word:'mango', hint:'Fruta tropical amarilla' },
+  { word:'caldo', hint:'Base para sopas' },
+  { word:'crema', hint:'Textura suave en cocina' },
+  { word:'limon', hint:'Cítrico amarillo' },
+  { word:'salsa', hint:'Acompañante de platillos' },
+  { word:'horno', hint:'Donde se hornea' },
+  { word:'asado', hint:'Carne cocida al fuego' },
+  { word:'guiso', hint:'Plato cocido lentamente' },
+  { word:'sabor', hint:'El gusto de la comida' },
+  { word:'cacao', hint:'Semilla del chocolate' },
+  { word:'pasta', hint:'Comida italiana' },
+  { word:'juego', hint:'Actividad divertida' },
+  { word:'jugar', hint:'Participar en un juego' },
+  { word:'letra', hint:'Unidad de las palabras' },
+  { word:'pista', hint:'Ayuda para adivinar' },
+  { word:'ganar', hint:'Objetivo del juego' },
+  { word:'tabla', hint:'Donde se anotan puntos' },
+  { word:'ronda', hint:'Cada turno del juego' },
+  { word:'saber', hint:'Tener conocimiento' },
+  { word:'truco', hint:'Estrategia para ganar' },
+]
+
+const GENERIC_WORDS = [
+  'perro','libro','fuego','cielo','noche','calle','plaza','coche','barco',
+  'patio','campo','playa','monte','valle','papel','pluma','sello','bolsa','llave',
+  'reloj','peine','jabon','dulce','arbol','brazo','copia','falda','grasa',
+  'huevo','joven','lista','madre','marca','mente','metal','mundo','nariz',
+  'negra','nuevo','norte','padre','parte','pasto','pausa','pesca','piano',
+  'pista','plato','pobre','poder','poema','pollo','prima','resto','roble',
+  'rubio','ruido','sauce','siete','siglo','silla','sordo','suave','sucio',
+  'sueño','tabla','tallo','tarde','techo','temor','terco','tinta','tonto',
+  'total','trama','trapo','trece','tribu','trigo','tropa','truco','vapor',
+  'vello','verde','viaje','vicio','viejo','vista','viuda','volar','vuelo',
+  'acero','actor','adios','agudo','ajeno','alado','altar','amado','ameno',
+  'ancho','ancla','andar','angel','ansia','anual','apodo','apoyo','arder',
+  'arena','arnes','aroma','arpon','asado','asilo','atril','audaz','autor',
+  'avena','avion','ayuda','azote','baile','banco','banda','barra','bicho',
+  'blusa','bolso','bomba','boton','bravo','brisa','broca','brote','bruma',
+  'bruto','bueno','bulto','buque','burla','buzon','caber','cabra','cacao',
+  'cacho','caida','cajon','calma','calor','canal','capaz','carga','carro',
+  'carta','casco','casto','cauce','causa','cebra','ceder','cegar','celda',
+  'celos','cerca','cerdo','cerro','chico','chile','chino','choza','ciclo',
+  'cifra','cinco','cinta','cinto','cobre','coger','cojin','colmo','color',
+  'combo','comer','comun','conde','corte','corto','coser','costa','crear',
+  'credo','creer','crema','cruce','cruda','crudo','cruel','cueva','culpa',
+  'culto','cuota','curso','curva','cutis','danza','dardo','deber','debil',
+  'decir','dedal','dejar','demas','desde','deseo','deuda','dicha','digno',
+  'divan','docil','dolar','dolor','donde','dorar','dosis','drama','droga',
+  'duelo','dueño','duque','durar','echar','enero','entero','entre','epoca',
+  'error','estar','etapa','eterno','evento','evitar','evocar','exacto',
+  'exento','exito','extra','faena','falso','falta','fango','farol','farsa',
+  'fatiga','favor','fecha','feliz','feria','feroz','fibra','ficha','fijar',
+  'final','finca','fingir','firma','firme','flaco','fleco','flema','flojo',
+  'flora','flota','flote','fluir','flujo','fobia','folio','fondo','forma',
+  'fosil','frase','freir','freno','fresa','frito','fruto','fuera','fuero',
+  'fugaz','fumar','funda','furia','furor','fusil','gesto','glosa','golpe',
+  'gorro','grito','grupo','guapo','guiar','gusto','habla','hacer','hacha',
+  'hacia','hueco','hueso','humor','ideal','igual','jamon','jaula','jefes',
+  'jugos','junio','justo','largo','latir','lavar','lejos','lente','lento',
+  'lindo','listo','llano','lleno','lucha','luego','lugar','lunes','magia',
+  'mando','mango','manso','manta','marco','marea','mayor','media','medio',
+  'mejor','menos','nacer','nadar','necio','negar','nevar','nieto','nieve',
+  'noria','notar','nueve','ocaso','odiar','oeste','oliva','opaco','opina',
+  'orden','oreja','osado','ostra','otono','ovalo','oveja','ovino','oxido',
+  'pacer','pacto','parco','pardo','parra','peces','pecho','pegar','perla',
+  'perno','perra','persa','pesar','pesta','picar','pieza','pilar','pinar',
+  'pinta','pisar','pitar','placa','plana','plomo','podar','polar','polen',
+  'pompa','poner','porra','porta','posar','potro','presa','primo','prole',
+  'prosa','pudor','pulir','pulpa','pulpo','pulso','punto','purga','rabia',
+  'racha','radio','rango','rapaz','rasgo','raspa','rayar','razon','rebel',
+  'recto','redil','regar','regla','reina','rejon','relaj','remar','renta',
+  'retar','retro','reuma','reves','rezar','rifar','rifle','rigor','rimar',
+  'risco','ritmo','rival','robar','robot','rocio','rodar','rollo','rombo',
+  'ronda','rosal','rosca','rotor','rozar','rubor','rugir','ruina','rural',
+  'sabio','sabor','sacro','salir','salmo','salon','salud','salvo','santo',
+  'saque','sarro','sazon','secar','segar','segun','segur','selva','senil',
+  'serio','sesgo','sesos','sexto','sidra','signo','silba','silbo','simio',
+  'sirio','sirve','sismo','sobra','socio','solaz','soler','solio','sombra',
+  'sonar','soneto','sonido','sonoro','soñar','sopa','soplo','sorber','sordo',
+  'sosa','sueco','suela','suelo','sueno','suerte','sufrir','suizo','sumar',
+  'surco','surgir','susto','sutil','tacto','talla','talle','tango','tanto',
+  'tapar','tapiz','tarro','tarta','tasar','techo','tedio','tejer','tejon',
+  'telar','tema','temor','tener','tenis','tenor','tenso','terco','termo',
+  'terno','tesis','teson','testa','texto','tibio','tigre','timon','tinta',
+  'tinte','tipo','tirar','tiron','tocar','tocho','tomar','tonel','tono',
+  'topar','toque','torpe','torre','torta','tosco','toser','tozar','traer',
+  'trago','traje','trapo','tratar','traza','trazo','trecho','tregua','trenza',
+  'trepar','triada','trinar','tripa','triple','triste','trono','tropa',
+  'trotar','trozo','trueno','tubo','tuerto','tumba','tumbo','tumor','tunel',
+  'turco','turno','tutela','tutor','ufano','ungir','unico','union','unir',
+  'untar','usado','usar','usura','vacio','vagar','vago','valer','valido',
+  'valor','varon','vaso','vasto','vedar','vejez','velar','veloz','vena',
+  'vencer','vender','venir','venta','verbo','vereda','verja','verso','verter',
+  'vestir','veta','vetar','viajar','vigor','viola','visaje','visar','visera',
+  'vivaz','vivero','vivido','vivir','vivo','vocal','vocero','voleo','volver',
+  'voraz','votar','vuelco','vuelta','vulgar','vulgo','yacer','yanta','yate',
+  'yegua','yema','yerba','yermo','yerno','yerro','yerto','yeso','yodo',
+  'yoga','yugo','zafar','zafio','zafiro','zaino','zanja','zapato','zarpar',
+  'zarza','zona','zorro','zumbar','zumo','zurcir','zurdo','zurrar'
+]
+
+const WORD_DATA = [
+  ...THEMED_WORDS,
+  ...GENERIC_WORDS.map(w => ({ word: w, hint: `Empieza con "${w[0].toUpperCase()}"` }))
+]
+
+const DIFFICULTY = {
+  facil:{ attempts:8,label:'Fácil' },
+  medio:{ attempts:6,label:'Medio' },
+  dificil:{ attempts:5,label:'Difícil' }
+}
+
+const COLS = 5
+const RANKING_KEY = 'rosita_wordle_ranking'
+let state = {}
+
+function pickWord(){
+  const valid=WORD_DATA.filter(e=>e.word.length===COLS)
+  return valid[Math.floor(Math.random()*valid.length)]
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'))
+  const el=document.getElementById(id)
+  if(el)el.classList.add('active')
+}
+
+function loadRanking(){
+  try{
+    const d=localStorage.getItem(RANKING_KEY)
+    return d?JSON.parse(d):[]
+  }catch{return[]}
+}
+
+function saveRanking(entry){
+  let r=loadRanking()
+  r.push(entry)
+  r.sort((a,b)=>b.score-a.score)
+  if(r.length>10)r=r.slice(0,10)
+  try{localStorage.setItem(RANKING_KEY,JSON.stringify(r))}catch{}
+}
+
+function renderRanking(){
+  const list=document.getElementById('ranking-list')
+  const r=loadRanking()
+  if(r.length===0){
+    list.innerHTML='<p style="text-align:center;color:var(--tile-text);padding:1rem">Aún no hay partidas guardadas 🎮</p>'
+    return
+  }
+  list.innerHTML='<div class="ranking-entry" style="font-weight:700;color:var(--header-color);border-bottom:2px solid var(--header-color)"><span class="r-pos">#</span><span class="r-date">Fecha</span><span class="r-diff">Nivel</span><span class="r-score">Pts</span></div>'
+  r.forEach((e,i)=>{
+    const d=document.createElement('div')
+    d.className='ranking-entry'
+    d.innerHTML=`<span class="r-pos">${i+1}</span><span class="r-date">${e.date||'—'}</span><span class="r-diff">${e.difficulty||'—'}</span><span class="r-score">${e.score||0}</span>`
+    list.appendChild(d)
+  })
+}
+
+function calcScore(won,used,max,hints,diff){
+  if(!won)return 0
+  const base=(max-used+1)*100
+  const penalty=diff==='facil'?0:hints*25
+  const bonus={facil:0,medio:50,dificil:100}[diff]||0
+  return Math.max(0,base-penalty+bonus)
+}
+
+function initGame(diff){
+  diff=diff||'medio'
+  const cfg=DIFFICULTY[diff]
+  const entry=pickWord()
+  state={
+    target:entry.word,
+    hint:entry.hint,
+    currentRow:0,
+    currentCol:0,
+    guesses:[],
+    gameOver:false,
+    submitting:false,
+    difficulty:diff,
+    maxAttempts:cfg.attempts,
+    keyboardState:{},
+    hintCount:0
+  }
+  document.getElementById('hint-btn').disabled=false
+  renderBoard(cfg.attempts)
+  renderKeyboard()
+  showMessage(`${cfg.label}: ${cfg.attempts} intentos`,'info')
+  document.querySelectorAll('#difficulty button').forEach(b=>{
+    b.classList.toggle('active',b.dataset.diff===diff)
+  })
+}
+
+function renderBoard(rows){
+  const board=document.getElementById('board')
+  board.innerHTML=''
+  board.style.gridTemplateColumns=`repeat(${COLS},clamp(42px,13vw,62px))`
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<COLS;c++){
+      const tile=document.createElement('div')
+      tile.className='tile'
+      tile.dataset.row=r
+      tile.dataset.col=c
+      board.appendChild(tile)
+    }
+  }
+}
+
+function getTile(row,col){
+  return document.querySelector(`#board .tile[data-row="${row}"][data-col="${col}"]`)
+}
+
+function getRowTiles(row){
+  return document.querySelectorAll(`#board .tile[data-row="${row}"]`)
+}
+
+function renderKeyboard(){
+  const kb=document.getElementById('keyboard')
+  kb.innerHTML=''
+  const rows=[
+    ['q','w','e','r','t','y','u','i','o','p'],
+    ['a','s','d','f','g','h','j','k','l','ñ'],
+    ['enter','z','x','c','v','b','n','m','bs']
+  ]
+  rows.forEach(keys=>{
+    const row=document.createElement('div')
+    row.className='key-row'
+    keys.forEach(k=>{
+      const btn=document.createElement('button')
+      btn.className='key'
+      btn.dataset.key=k
+      btn.textContent=k==='enter'?'ENTER':k==='bs'?'⌫':k.toUpperCase()
+      if(k==='enter'||k==='bs')btn.classList.add('special')
+      btn.addEventListener('click',()=>handleKey(k))
+      row.appendChild(btn)
+    })
+    kb.appendChild(row)
+  })
+}
+
+function updateKeyboard(guess,colors){
+  for(let i=0;i<guess.length;i++){
+    const ch=guess[i]
+    const cur=state.keyboardState[ch]||''
+    const color=colors[i]
+    let priority={correct:2,present:1,absent:0}
+    if(priority[color]>(priority[cur]||-1)){
+      state.keyboardState[ch]=color
+    }
+  }
+  document.querySelectorAll('#keyboard .key').forEach(btn=>{
+    const k=btn.dataset.key
+    if(k==='enter'||k==='bs')return
+    const s=state.keyboardState[k]
+    if(s)btn.className='key '+s
+  })
+}
+
+function showMessage(text,type){
+  const el=document.getElementById('message')
+  el.textContent=text
+  const colors={
+    error:'#E8877A',
+    win:'#7AC4A0',
+    lose:'#C4A0A0',
+    hint:'#C4A0D4',
+    info:'var(--msg-color)'
+  }
+  el.style.color=colors[type]||'var(--msg-color)'
+}
+
+function computeColors(guess,target){
+  const result=Array(5).fill('absent')
+  const targetChars=target.split('')
+  for(let i=0;i<5;i++){
+    if(guess[i]===target[i]){
+      result[i]='correct'
+      targetChars[i]=null
+    }
+  }
+  for(let i=0;i<5;i++){
+    if(result[i]==='correct')continue
+    const idx=targetChars.indexOf(guess[i])
+    if(idx!==-1){
+      result[i]='present'
+      targetChars[idx]=null
+    }
+  }
+  return result
+}
+
+function isValidWord(word){
+  return WORD_DATA.some(e=>e.word===word)
+}
+
+function handleSubmit(){
+  if(state.gameOver||state.submitting)return
+  if(state.currentCol<5){
+    showMessage('Faltan letras','error')
+    shakeRow(state.currentRow)
+    return
+  }
+  let guess=''
+  for(let i=0;i<5;i++){
+    const tile=getTile(state.currentRow,i)
+    guess+=tile.textContent.toLowerCase()
+  }
+  if(!isValidWord(guess)){
+    showMessage('Palabra no válida','error')
+    shakeRow(state.currentRow)
+    return
+  }
+  state.submitting=true
+  state.guesses.push(guess)
+  const colors=computeColors(guess,state.target)
+  const tiles=getRowTiles(state.currentRow)
+  tiles.forEach((tile,i)=>{
+    tile.style.animationDelay=i*0.15+'s'
+    tile.className='tile '+'flip-'+colors[i]
+  })
+  updateKeyboard(guess,colors)
+  let animDone=0
+  tiles.forEach((tile,i)=>{
+    function handler(){
+      tile.removeEventListener('animationend',handler)
+      animDone++
+      if(animDone===5)afterFlip(guess,colors)
+    }
+    tile.addEventListener('animationend',handler)
+  })
+}
+
+function afterFlip(guess,colors){
+  state.submitting=false
+  if(colors.every(c=>c==='correct')){
+    state.gameOver=true
+    const score=calcScore(true,state.guesses.length,state.maxAttempts,state.hintCount,state.difficulty)
+    saveRanking({date:new Date().toLocaleDateString('es-MX'),score,difficulty:DIFFICULTY[state.difficulty].label,won:true,attemptsUsed:state.guesses.length,hintsUsed:state.hintCount})
+    showMessage(`🎉 ¡Ganaste! +${score} pts 🎉`,'win')
+    bounceRow(state.currentRow)
+    return
+  }
+  state.currentRow++
+  state.currentCol=0
+  if(state.currentRow>=state.maxAttempts){
+    state.gameOver=true
+    const score=calcScore(false,0,0,0,state.difficulty)
+    saveRanking({date:new Date().toLocaleDateString('es-MX'),score,difficulty:DIFFICULTY[state.difficulty].label,won:false,attemptsUsed:state.guesses.length,hintsUsed:state.hintCount})
+    showMessage(`😢 La palabra era: ${state.target.toUpperCase()}`,'lose')
+  }
+}
+
+function handleHint(){
+  if(state.gameOver||state.submitting)return
+  const isFree=state.difficulty==='facil'||state.hintCount===0
+  state.hintCount++
+  if(isFree){
+    showMessage(`💡 ${state.hint}`,'hint')
+  }else{
+    showMessage(`💡 ${state.hint} — Has perdido un intento`,'hint')
+    const tiles=getRowTiles(state.currentRow)
+    tiles.forEach(t=>{
+      t.textContent='·'
+      t.className='tile skipped'
+    })
+    state.currentRow++
+    state.currentCol=0
+    if(state.currentRow>=state.maxAttempts){
+      state.gameOver=true
+      const score=calcScore(false,0,0,0,state.difficulty)
+      saveRanking({date:new Date().toLocaleDateString('es-MX'),score,difficulty:DIFFICULTY[state.difficulty].label,won:false,attemptsUsed:state.guesses.length,hintsUsed:state.hintCount})
+      showMessage(`😢 La palabra era: ${state.target.toUpperCase()}`,'lose')
+    }
+  }
+}
+
+function shakeRow(row){
+  const tiles=getRowTiles(row)
+  tiles.forEach(t=>{
+    t.classList.add('shake')
+    t.addEventListener('animationend',()=>t.classList.remove('shake'),{once:true})
+  })
+}
+
+function bounceRow(row){
+  const tiles=getRowTiles(row)
+  tiles.forEach((t,i)=>{
+    setTimeout(()=>{
+      t.classList.add('bounce')
+      t.addEventListener('animationend',()=>t.classList.remove('bounce'),{once:true})
+    },i*80)
+  })
+}
+
+function handleKey(key){
+  if(state.gameOver||state.submitting)return
+  if(key==='enter'){handleSubmit();return}
+  if(key==='bs'){
+    if(state.currentCol>0){
+      state.currentCol--
+      const tile=getTile(state.currentRow,state.currentCol)
+      tile.textContent=''
+      tile.classList.remove('filled')
+    }
+    return
+  }
+  if(!/^[a-zñ]$/.test(key))return
+  if(state.currentCol>=5)return
+  const tile=getTile(state.currentRow,state.currentCol)
+  tile.textContent=key.toUpperCase()
+  tile.classList.add('filled')
+  state.currentCol++
+}
+
+function resetGame(){
+  initGame(state.difficulty||'medio')
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){handleKey('enter');return}
+  if(e.key==='Backspace'){handleKey('bs');return}
+  const k=e.key.toLowerCase()
+  if(/^[a-zñ]$/.test(k))handleKey(k)
+})
+
+document.querySelectorAll('#difficulty button').forEach(btn=>{
+  btn.addEventListener('click',()=>initGame(btn.dataset.diff))
+})
+
+document.getElementById('reset-btn').addEventListener('click',resetGame)
+
+document.getElementById('siguiente-btn').addEventListener('click',()=>{
+  showScreen('instructions-screen')
+})
+
+document.getElementById('jugar-btn').addEventListener('click',()=>{
+  showScreen('game-screen')
+  initGame(state.difficulty||'medio')
+})
+
+document.getElementById('hint-btn').addEventListener('click',handleHint)
+
+document.getElementById('ranking-btn').addEventListener('click',()=>{
+  renderRanking()
+  document.getElementById('ranking-modal').classList.add('active')
+})
+
+document.getElementById('ranking-close').addEventListener('click',()=>{
+  document.getElementById('ranking-modal').classList.remove('active')
+})
+
+document.getElementById('ranking-modal').addEventListener('click',e=>{
+  if(e.target===e.currentTarget)document.getElementById('ranking-modal').classList.remove('active')
+})
+
+showScreen('splash-screen')
+</script>
+</body>
+</html>
